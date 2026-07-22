@@ -94,9 +94,8 @@ function App() {
       </header>
 
       <section className="hero" aria-labelledby="page-title">
-        <p className="eyebrow">OUTDOOR READINESS SYSTEM</p>
-        <h1 id="page-title">오늘, 무엇을<br /><strong>준비할까요?</strong></h1>
-        <p className="intro">도시를 입력하면 날씨와 대기질을 분석해<br />필요한 복장과 준비물을 알려드려요.</p>
+        <p className="eyebrow">TODAY / OUTDOOR</p>
+        <h1 id="page-title">오늘의<br /><strong>준비</strong></h1>
 
         <form className="search" onSubmit={submit}>
           <label htmlFor="city">도시 이름</label>
@@ -129,7 +128,7 @@ function App() {
 
       {status === 'idle' && (
         <section className="signal-preview" aria-label="분석 항목">
-          {[['01', '☂', '강수'], ['02', '☀', '자외선'], ['03', '◌', '대기질'], ['04', '♨', '체감온도']].map(([number, icon, label]) => <div key={number}><small>{number}</small><span aria-hidden="true">{icon}</span><strong>{label}</strong></div>)}
+          {[['01', '☂', 'RAIN'], ['02', '☀', 'UV'], ['03', '◌', 'AIR'], ['04', '♨', 'TEMP']].map(([number, icon, label]) => <div key={number}><small>{number}</small><span aria-hidden="true">{icon}</span><strong>{label}</strong></div>)}
         </section>
       )}
 
@@ -147,21 +146,35 @@ function Dashboard({ place, data }) {
         <div className="temperature"><strong>{format(weather.apparentTemperatureC, '°')}</strong><span>체감온도</span></div>
       </div>
 
-      <div className="recommendation-grid">
-        {recommendations.map((item) => <article key={item.id} className={`recommendation ${item.active ? 'active' : ''}`}><span className="recommendation-icon" aria-hidden="true">{item.icon}</span><div><small>{item.category}</small><h3>{item.label}</h3><p>{item.reason}</p></div><b>{item.active ? 'ON' : '—'}</b></article>)}
+      <div className="recommendation-grid" aria-label="준비물 추천">
+        {recommendations.map((item) => <article key={item.id} className={`recommendation ${item.active ? 'active' : ''}`} title={item.reason}><span className="recommendation-icon" aria-hidden="true">{item.icon}</span><div><small>{item.category}</small><h3>{item.label}</h3></div><b>{item.active ? 'ON' : '—'}</b><span className="sr-only">{item.reason}</span></article>)}
       </div>
 
-      <dl className="metrics">
-        <div><dt>기온</dt><dd>{format(weather.temperatureC, '°C')}</dd></div>
-        <div><dt>3시간 강수확률</dt><dd>{format(weather.maxPrecipitationProbabilityNext3h, '%')}</dd></div>
-        <div><dt>UV 지수</dt><dd>{format(weather.maxUvIndexNext3h, '')}</dd></div>
-        <div><dt>PM2.5</dt><dd>{format(airQuality.pm25MicrogramsPerM3, '')}<small> µg/m³</small></dd></div>
-        <div><dt>PM10</dt><dd>{format(airQuality.pm10MicrogramsPerM3, '')}<small> µg/m³</small></dd></div>
-      </dl>
+      <div className="signal-charts" aria-label="날씨 신호와 준비물 임계값">
+        <SignalChart label="TEMP" value={weather.apparentTemperatureC} unit="°" min={-10} max={40} thresholds={[{ value: 12, label: 'OUTER 12°' }, { value: 25, label: 'T-SHIRT 25°' }]} />
+        <SignalChart label="UV" value={weather.maxUvIndexNext3h} unit="" min={0} max={11} thresholds={[{ value: 3, label: 'SUN 3' }]} />
+        <SignalChart label="RAIN" value={weather.maxPrecipitationProbabilityNext3h} unit="%" min={0} max={100} thresholds={[{ value: 40, label: 'UMBRELLA 40%' }]} />
+        <SignalChart label="PM2.5" value={airQuality.pm25MicrogramsPerM3} unit="" min={0} max={100} thresholds={[{ value: 35, label: 'MASK 35' }]} suffix="µg/m³" />
+      </div>
 
       {warnings.length > 0 && <p className="warning">일부 정보 누락: {warnings.join(' · ')}</p>}
       <p className="timestamp">예보 기준 {new Date(data.reportedAt).toLocaleString('ko-KR', { timeZone: place.timezone })} · 방금 갱신</p>
     </section>
+  );
+}
+
+function SignalChart({ label, value, unit, min, max, thresholds, suffix }) {
+  const position = (point) => `${Math.max(0, Math.min(100, ((point - min) / (max - min)) * 100))}%`;
+  return (
+    <article className="signal-chart">
+      <div className="chart-value"><span>{label}</span><strong>{format(value, unit)}</strong>{suffix && <small>{suffix}</small>}</div>
+      <div className="chart-track" role="img" aria-label={`${label} ${format(value, unit)}, 임계값 ${thresholds.map(({ label: thresholdLabel }) => thresholdLabel).join(', ')}`}>
+        <i className="chart-fill" style={{ width: value == null ? 0 : position(value) }} />
+        {thresholds.map((threshold) => <span className="threshold" key={threshold.label} style={{ left: position(threshold.value) }}><b>{threshold.label}</b></span>)}
+        {value != null && <span className="current-point" style={{ left: position(value) }} />}
+      </div>
+      <div className="chart-range"><span>{min}</span><span>{max}</span></div>
+    </article>
   );
 }
 
