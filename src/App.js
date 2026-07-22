@@ -134,6 +134,7 @@ function App() {
           <div><p className="section-number">01 / LOCATION</p><h2 id="places-title">어느 도시인가요?</h2></div>
           <div className="place-list">
             {places.map((place) => <button key={place.id} onClick={() => choosePlace(place)}><strong>{place.name}</strong><span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span><b aria-hidden="true">→</b></button>)}
+
           </div>
         </section>
       )}
@@ -179,6 +180,7 @@ function Dashboard({ place, data }) {
 }
 
 function SignalChart({ label, value, low, high, unit, min, max, thresholds, suffix, recommendation }) {
+ main
   const position = (point) => `${Math.max(0, Math.min(100, ((point - min) / (max - min)) * 100))}%`;
   return (
     <article className="signal-chart">
@@ -192,6 +194,7 @@ function SignalChart({ label, value, low, high, unit, min, max, thresholds, suff
       </div>
       <div className="chart-range"><span>{min}</span><span>{max}</span></div>
       {recommendation && <div className={`chart-ready ${recommendation.active ? 'active' : ''}`} title={recommendation.reason}><span aria-hidden="true">{recommendation.icon}</span><strong>{recommendation.label}</strong><b>{recommendation.active ? 'ON' : 'OFF'}</b><i className="sr-only">{recommendation.reason}</i></div>}
+
     </article>
   );
 }

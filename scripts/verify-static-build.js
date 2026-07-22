@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const build = path.join(root, 'build');
 const requiredFiles = ['index.html', '404.html', 'asset-manifest.json', 'manifest.json', '.nojekyll'];
+ main
 
 for (const file of requiredFiles) {
   if (!fs.existsSync(path.join(build, file))) {

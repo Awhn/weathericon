@@ -4,6 +4,7 @@ import { getConditions, searchPlaces } from './services/openMeteo';
 
 jest.mock('./services/openMeteo', () => ({ searchPlaces: jest.fn(), getConditions: jest.fn() }));
 
+
 test('renders the city search entry screen', () => {
   window.history.replaceState({}, '', '/');
   render(<App />);
