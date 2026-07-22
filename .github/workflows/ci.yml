@@ -1,0 +1,33 @@
+name: Validate pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout merged pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test merged source
+        run: npm test -- --watchAll=false
+        env:
+          CI: true
+
+      - name: Verify static build
+        run: npm run build:pages
