@@ -45,6 +45,7 @@ npm start
 ```bash
 npm test -- --watchAll=false
 npm run build
+npm run build:pages
 ```
 
 ## 폴더 구조
@@ -72,9 +73,28 @@ weathericon/
 
 1. GitHub 저장소의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 설정합니다.
 2. `main` 브랜치에 push하거나 Actions 화면에서 `Deploy to GitHub Pages` 워크플로를 수동 실행합니다.
-3. 워크플로는 `npm ci`, 테스트, `npm run build`를 순서대로 실행한 뒤 `build/`만 Pages artifact로 배포합니다.
+3. 워크플로는 `npm ci`, 테스트, `npm run build:pages`를 순서대로 실행한 뒤 `build/`의 **내용**을 Pages artifact로 배포합니다.
 
 `homepage`를 `.`으로 설정해 사용자/조직 페이지와 `/{repository}/` 형태의 프로젝트 페이지 모두에서 JS·CSS 경로가 저장소 하위 경로를 벗어나지 않게 했습니다. 앱은 경로 라우팅 대신 `?city=`만 사용하므로 별도의 SPA `404.html` fallback은 필요하지 않습니다.
+
+### 소스 루트와 배포 루트
+
+저장소 루트는 React **소스 프로젝트의 루트**이고, `npm run build`가 생성하는 `build/`는 HTML·CSS·JavaScript만 들어 있는 **정적 배포 루트**입니다. GitHub Pages Actions의 artifact 배포는 `build/` 폴더 자체를 한 단계 더 올리는 것이 아니라 그 안의 파일을 사이트 루트에 풉니다.
+
+```text
+repository root                    deployed Pages root
+├── package.json                   ├── index.html
+├── src/                           ├── asset-manifest.json
+├── public/       npm run build    ├── manifest.json
+└── build/        ─────────────▶   ├── .nojekyll
+    ├── index.html                 └── static/
+    ├── .nojekyll                      ├── css/*.css
+    └── static/                        └── js/*.js
+```
+
+따라서 빌드 결과물을 Git 저장소의 소스 루트에 복사하거나 커밋하지 않습니다. 그렇게 하면 `src/`, `package.json`, `README.md`와 배포 파일이 섞이고 매 빌드마다 해시가 붙은 파일이 커밋됩니다. 대신 `upload-pages-artifact`의 `path: build`가 배포 시점에 `build/index.html`을 실제 사이트의 루트 `index.html`로 만듭니다.
+
+`npm run build:pages`는 정적 빌드 후 `index.html`, manifest, `.nojekyll`, CSS/JS entrypoint의 존재와 루트 절대경로 누락을 검사합니다. 이 앱은 서버에서 React를 실행하거나 HTML을 렌더링하지 않으며, 배포 후 브라우저가 정적 JS를 실행하고 Open-Meteo API를 직접 호출합니다.
 
 ## 구현 순서
 

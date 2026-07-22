@@ -37,7 +37,7 @@ jobs:
           CI: true
 
       - name: Build static site
-        run: npm run build
+        run: npm run build:pages
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -45,6 +45,8 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # The contents of build/, not the build directory itself, become the
+          # root (/) of the deployed GitHub Pages site.
           path: build
 
   deploy:
