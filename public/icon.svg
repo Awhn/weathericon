@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Weather Icon W symbol">
+  <rect width="128" height="128" rx="32" fill="#dfff3f"/>
+  <circle cx="64" cy="64" r="45" fill="#161713"/>
+  <path d="M33 40h17l8 38 9-38h12l9 38 8-38h16L97 91H80l-7-29-7 29H49L33 40Z" fill="#dfff3f"/>
+</svg>
