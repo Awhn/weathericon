@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { getConditions, searchPlaces } from './services/openMeteo';
 import { buildRecommendations } from './domain/recommendations';
@@ -93,8 +93,7 @@ function App() {
 
   const submit = (event) => {
     event.preventDefault();
-    const city = cityInput.trim().replace(/\s+/g, ' ');
-    findCity(city);
+    findCity(cityInput);
   };
 
   const choosePlace = (place) => {
@@ -110,11 +109,11 @@ function App() {
           <span className="brand-mark" aria-hidden="true">W</span>
           <span>WEATHER ICON</span>
         </a>
-        <span className="live-label"><i /> LIVE CONDITIONS</span>
+        <span className="data-label">FORECAST DATA</span>
       </header>
 
       <section className="hero" aria-labelledby="page-title">
-        {status !== 'ready' && <><p className="eyebrow">TODAY / OUTDOOR</p><h1 id="page-title">오늘의<br /><strong>준비</strong></h1></>}
+        {status !== 'ready' && <h1 id="page-title">오늘의<br /><strong>준비</strong></h1>}
 
         <form className="search" onSubmit={submit}>
           <label className={status === 'ready' ? 'sr-only' : ''} htmlFor="city">도시 이름</label>
@@ -126,13 +125,12 @@ function App() {
         </form>
       </section>
 
-      {(status === 'searching' || status === 'loading') && (
-        <section className="status-card" aria-live="polite"><span className="spinner" /> {status === 'searching' ? '도시를 찾는 중입니다' : '날씨 신호를 분석하는 중입니다'}</section>
-      )}
+      {status === 'searching' && <section className="status-card" aria-live="polite"><span className="spinner" /> 도시를 찾는 중입니다</section>}
+      {status === 'loading' && <LoadingDashboard place={selectedPlace} />}
 
       {status === 'selecting' && (
         <section className="places" aria-labelledby="places-title">
-          <div><p className="section-number">01 / LOCATION</p><h2 id="places-title">어느 도시인가요?</h2></div>
+          <div><h2 id="places-title">어느 도시인가요?</h2></div>
           <div className="place-list">
             {places.map((place) => <button key={place.id} onClick={() => choosePlace(place)}><strong>{place.name}</strong><span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span><b aria-hidden="true">→</b></button>)}
           </div>
@@ -147,7 +145,7 @@ function App() {
 
       {status === 'idle' && (
         <section className="signal-preview" aria-label="분석 항목">
-          {[['01', '☂', 'RAIN'], ['02', '☀', 'UV'], ['03', '◌', 'AIR'], ['04', '♨', 'TEMP']].map(([number, icon, label]) => <div key={number}><small>{number}</small><span aria-hidden="true">{icon}</span><strong>{label}</strong></div>)}
+          {[['☂', 'RAIN'], ['☀', 'UV'], ['◌', 'PM2.5'], ['♨', 'TEMP']].map(([icon, label]) => <div key={label}><span aria-hidden="true">{icon}</span><strong>{label}</strong></div>)}
         </section>
       )}
 
@@ -158,15 +156,22 @@ function App() {
 
 function Dashboard({ place, data }) {
   const { weather, airQuality, recommendations, warnings } = data;
+  const activeRecommendations = useMemo(() => recommendations.filter((recommendation) => recommendation.active), [recommendations]);
+  const summaryItems = activeRecommendations.length ? activeRecommendations : [recommendations[0]].filter(Boolean);
+
   return (
     <section className="dashboard" aria-labelledby="result-title">
-      <div className="result-heading">
-        <div><p className="section-number">02 / READINESS</p><h2 id="result-title">{place.name}<span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span></h2></div>
-        <div className="temperature"><strong>{format(weather.apparentTemperatureC, '°')}</strong><span>체감온도</span></div>
+      <div className="readiness-summary" aria-label="오늘의 준비물 요약">
+        {summaryItems.map((recommendation) => <div key={recommendation.id} className="ready-box"><span aria-hidden="true">{recommendation.icon}</span><strong>{recommendation.label}</strong><b>{recommendation.active ? 'ON' : 'OFF'}</b></div>)}
       </div>
 
-      <div className="signal-charts" aria-label="날씨 신호와 준비물 임계값">
-        <SignalChart recommendation={recommendations[0]} label="TEMP" value={weather.apparentTemperatureC} low={weather.minTemperatureC} high={weather.maxTemperatureC} unit="°" min={-10} max={40} />
+      <div className="result-heading">
+        <div><h2 id="result-title">{place.name}<span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span></h2></div>
+        <div className="temperature"><strong>{format(weather.temperatureC, '°')}</strong><span>현재 기온 · 체감 {format(weather.apparentTemperatureC, '°')}</span></div>
+      </div>
+
+      <div className="signal-charts" aria-label="날씨 상세 신호">
+        <SignalChart recommendation={recommendations[0]} label="TEMP" value={weather.temperatureC} low={weather.minTemperatureC} high={weather.maxTemperatureC} unit="°" min={-10} max={40} />
         <SignalChart recommendation={recommendations[2]} label="UV" value={weather.uvIndexNow} low={weather.minUvIndexNext3h} high={weather.maxUvIndexNext3h} unit="" min={0} max={11} />
         <SignalChart recommendation={recommendations[1]} label="RAIN" value={weather.precipitationProbabilityNow} low={weather.minPrecipitationProbabilityNext3h} high={weather.maxPrecipitationProbabilityNext3h} unit="%" min={0} max={100} />
         <SignalChart recommendation={recommendations[3]} label="PM2.5" value={airQuality.pm25MicrogramsPerM3} low={airQuality.minPm25Next3h} high={airQuality.maxPm25Next3h} unit="" min={0} max={100} suffix="µg/m³" />
@@ -174,7 +179,17 @@ function Dashboard({ place, data }) {
       </div>
 
       {warnings.length > 0 && <p className="warning">일부 정보 누락: {warnings.join(' · ')}</p>}
-      <p className="timestamp">{new Date(data.reportedAt).toLocaleString('ko-KR', data.timezone && data.timezone !== 'auto' ? { timeZone: data.timezone } : undefined)}</p>
+      <p className="timestamp">{new Date(data.reportedAt).toLocaleString('ko-KR', data.timezone && data.timezone !== 'auto' ? { timeZone: data.timezone } : undefined)} 업데이트 · Open-Meteo forecast</p>
+    </section>
+  );
+}
+
+function LoadingDashboard({ place }) {
+  return (
+    <section className="dashboard loading-dashboard" aria-live="polite" aria-label="날씨 분석 중">
+      <div className="readiness-summary"><div className="ready-box skeleton"><span /></div><div className="ready-box skeleton"><span /></div></div>
+      <div className="result-heading"><div><h2>{place?.name || '도시'}<span>{[place?.admin1, place?.country].filter(Boolean).join(', ') || '날씨 분석 중'}</span></h2></div><div className="temperature skeleton"><strong>--°</strong><span>현재 기온</span></div></div>
+      <div className="signal-charts">{['TEMP', 'UV', 'RAIN', 'PM2.5', 'WIND'].map((label) => <div className="signal-chart skeleton-row" key={label}><div className="chart-value"><span>{label}</span><strong>—</strong></div><div className="chart-track" /><div className="chart-ready"><strong>분석 중</strong><b>—</b></div></div>)}</div>
     </section>
   );
 }

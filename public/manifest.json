@@ -1,7 +1,12 @@
 {
   "short_name": "Weather Icon",
-  "name": "Weather Icon - 외출 준비 대시보드",
+  "name": "Weather Icon | 오늘의 외출 준비",
   "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
@@ -20,6 +25,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#161713",
+  "theme_color": "#dfff3f",
   "background_color": "#f3f1e9"
 }
