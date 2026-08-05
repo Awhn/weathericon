@@ -9,12 +9,12 @@ const routeMarker = '/city/';
 const readPlaceRoute = () => {
   const markerIndex = window.location.pathname.indexOf(routeMarker);
   if (markerIndex < 0) return null;
-  const parts = window.location.pathname.slice(markerIndex + routeMarker.length).split('/').map(decodeURIComponent);
-  if (parts.length !== 4) return null;
+  const parts = window.location.pathname.slice(markerIndex + routeMarker.length).split('/').map(safeDecodeURIComponent);
+  if (parts.length < 4) return null;
   const [country, admin1, name, coordinates] = parts;
   const [latitude, longitude] = coordinates.split(',').map(Number);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return { id: coordinates, country, admin1, name, latitude, longitude, timezone: 'auto' };
+  return { id: coordinates, country: restoreRouteValue(country), admin1: restoreRouteValue(admin1), name, latitude, longitude, timezone: 'auto' };
 };
 
 const basePath = () => {
@@ -166,7 +166,7 @@ function Dashboard({ place, data }) {
       </div>
 
       <div className="result-heading">
-        <div><h2 id="result-title">{place.name}<span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span></h2></div>
+        <div><h2 id="result-title">{place.name} <span className="weather-emoji" aria-label={weatherEmojiLabel(weather.weatherCode)}>{weatherEmoji(weather.weatherCode)}</span><span>{[place.admin1, place.country].filter(Boolean).join(', ')}</span></h2></div>
         <div className="temperature"><strong>{format(weather.temperatureC, '°')}</strong><span>현재 기온 · 체감 {format(weather.apparentTemperatureC, '°')}</span></div>
       </div>
 
@@ -188,11 +188,43 @@ function LoadingDashboard({ place }) {
   return (
     <section className="dashboard loading-dashboard" aria-live="polite" aria-label="날씨 분석 중">
       <div className="readiness-summary"><div className="ready-box skeleton"><span /></div><div className="ready-box skeleton"><span /></div></div>
-      <div className="result-heading"><div><h2>{place?.name || '도시'}<span>{[place?.admin1, place?.country].filter(Boolean).join(', ') || '날씨 분석 중'}</span></h2></div><div className="temperature skeleton"><strong>--°</strong><span>현재 기온</span></div></div>
+      <div className="result-heading"><div><h2>{place?.name || '도시'} <span className="weather-emoji" aria-hidden="true">⛅</span><span>{[place?.admin1, place?.country].filter(Boolean).join(', ') || '날씨 분석 중'}</span></h2></div><div className="temperature skeleton"><strong>--°</strong><span>현재 기온</span></div></div>
       <div className="signal-charts">{['TEMP', 'UV', 'RAIN', 'PM2.5', 'WIND'].map((label) => <div className="signal-chart skeleton-row" key={label}><div className="chart-value"><span>{label}</span><strong>—</strong></div><div className="chart-track" /><div className="chart-ready"><strong>분석 중</strong><b>—</b></div></div>)}</div>
     </section>
   );
 }
+
+const routePlaceholder = '-';
+const restoreRouteValue = (value) => value === routePlaceholder ? '' : value;
+const safeDecodeURIComponent = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const weatherEmoji = (code) => {
+  if (code == null) return '⛅';
+  if (code === 0) return '☀️';
+  if ([1, 2, 3].includes(code)) return '⛅';
+  if ([45, 48].includes(code)) return '🌫️';
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return '🌧️';
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return '❄️';
+  if ([95, 96, 99].includes(code)) return '⛈️';
+  return '⛅';
+};
+
+const weatherEmojiLabel = (code) => {
+  if (code == null) return '날씨 정보';
+  if (code === 0) return '맑음';
+  if ([1, 2, 3].includes(code)) return '구름';
+  if ([45, 48].includes(code)) return '안개';
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return '비';
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return '눈';
+  if ([95, 96, 99].includes(code)) return '뇌우';
+  return '날씨 정보';
+};
 
 const format = (value, unit) => value == null ? '—' : `${Math.round(value * 10) / 10}${unit}`;
 
