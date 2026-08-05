@@ -118,7 +118,6 @@ function App() {
         <form className="search" onSubmit={submit}>
           <label className={status === 'ready' ? 'sr-only' : ''} htmlFor="city">도시 이름</label>
           <div className="search-control">
-            <span aria-hidden="true">⌖</span>
             <input id="city" value={cityInput} onChange={(event) => setCityInput(event.target.value)} placeholder="서울, Busan, New York..." maxLength="100" />
             <button type="submit">확인 <span aria-hidden="true">→</span></button>
           </div>
