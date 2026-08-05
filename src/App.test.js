@@ -83,3 +83,34 @@ test('loads weather dashboard from a city detail URI directly', async () => {
   expect(await screen.findByRole('heading', { name: /서울 맑음/ })).toBeInTheDocument();
   expect(getConditions).toHaveBeenCalledWith(expect.objectContaining({ name: '서울', latitude: 37.5, longitude: 127 }));
 });
+
+
+test('loads weather dashboard from an encoded GitHub Pages city detail URI directly', async () => {
+  window.history.replaceState({}, '', '/weathericon/city/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C/%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C/37.566%2C126.9784');
+  getConditions.mockResolvedValue({
+    timezone: 'Asia/Seoul', reportedAt: '2026-07-22T12:00:00+09:00', warnings: [],
+    weather: {
+      temperatureC: 24,
+      apparentTemperatureC: 25,
+      precipitationMm: 0,
+      weatherCode: 0,
+      precipitationProbabilityNow: 0,
+      maxPrecipitationProbabilityNext3h: 0,
+      minPrecipitationProbabilityNext3h: 0,
+      uvIndexNow: 3,
+      maxUvIndexNext3h: 4,
+      minUvIndexNext3h: 2,
+      minTemperatureC: 19,
+      maxTemperatureC: 28,
+      windSpeedKmh: 5,
+      minWindSpeedKmh: 2,
+      maxWindSpeedKmh: 8,
+    },
+    airQuality: { pm25MicrogramsPerM3: 9, minPm25Next3h: 8, maxPm25Next3h: 10, pm10MicrogramsPerM3: 18 },
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole('heading', { name: /서울특별시 맑음/ })).toBeInTheDocument();
+  expect(getConditions).toHaveBeenCalledWith(expect.objectContaining({ name: '서울특별시', latitude: 37.566, longitude: 126.9784 }));
+});

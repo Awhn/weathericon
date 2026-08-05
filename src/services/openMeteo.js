@@ -20,9 +20,12 @@ async function request(url, timeout = 8000) {
 }
 
 export async function searchPlaces(city) {
-  const params = new URLSearchParams({ name: city, count: '20', language: 'ko', format: 'json' });
-  const payload = await request(`${endpoints.geocoding}?${params}`);
-  return rankPlacesBySimilarity(city, payload.results || []).slice(0, 5).map((place) => ({
+  const payloads = await Promise.all(queryVariants(city).map(async (query) => {
+    const params = new URLSearchParams({ name: query, count: '20', language: 'ko', format: 'json' });
+    return request(`${endpoints.geocoding}?${params}`);
+  }));
+  const places = dedupePlaces(payloads.flatMap((payload) => payload.results || []));
+  return rankPlacesBySimilarity(city, places).slice(0, 5).map((place) => ({
     id: `${place.latitude},${place.longitude}`,
     name: place.name,
     admin1: place.admin1 || '',
@@ -34,17 +37,48 @@ export async function searchPlaces(city) {
 }
 
 export function rankPlacesBySimilarity(query, places) {
-  const normalizedQuery = normalizeSearchText(query);
+  const queryTerms = searchTerms(query);
   return [...places]
-    .map((place, index) => ({ ...place, similarityScore: placeSimilarityScore(normalizedQuery, place), originalIndex: index }))
+    .map((place, index) => ({ ...place, similarityScore: placeSimilarityScore(queryTerms, place), originalIndex: index }))
     .filter((place) => place.similarityScore >= 0.5)
     .sort((first, second) => second.similarityScore - first.similarityScore || first.originalIndex - second.originalIndex);
 }
 
-function placeSimilarityScore(normalizedQuery, place) {
-  const fields = [place.name, place.admin1, place.country].filter(Boolean).map(normalizeSearchText);
-  return Math.max(...fields.map((field) => stringSimilarity(normalizedQuery, field)), 0);
+function placeSimilarityScore(queryTerms, place) {
+  const fields = [place.name, place.admin1, place.country].filter(Boolean).flatMap(searchTerms);
+  return Math.max(...queryTerms.flatMap((queryTerm) => fields.map((field) => stringSimilarity(queryTerm, field))), 0);
 }
+
+function queryVariants(query) {
+  const trimmed = query.toString().trim();
+  return [...new Set([trimmed, ...(queryAliases[trimmed] || [])].filter(Boolean))];
+}
+
+function searchTerms(value) {
+  const normalized = normalizeSearchText(value);
+  return [...new Set([normalized, ...(cityAliases[normalized] || [])].filter(Boolean))];
+}
+
+function dedupePlaces(places) {
+  const seen = new Set();
+  return places.filter((place) => {
+    const key = `${place.latitude},${place.longitude}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const cityAliases = {
+  [normalizeSearchText('서울')]: ['seoul'],
+  seoul: [normalizeSearchText('서울')],
+};
+
+const queryAliases = {
+  '서울': ['seoul'],
+  Seoul: ['서울'],
+  seoul: ['서울'],
+};
 
 function normalizeSearchText(value = '') {
   return value.toString().normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();

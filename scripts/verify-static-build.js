@@ -12,10 +12,19 @@ for (const file of requiredFiles) {
 }
 
 const html = fs.readFileSync(path.join(build, 'index.html'), 'utf8');
-const rootAbsoluteAsset = /(?:src|href)=["']\/(?!\/)/;
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const homepage = packageJson.homepage || '';
+const projectBase = homepage.startsWith('/') ? `${homepage.replace(/\/$/, '')}/` : '';
+const rootAbsoluteAsset = /(?:src|href)=["']\/(?!\/)/g;
+const invalidRootAssets = [...html.matchAll(rootAbsoluteAsset)]
+  .filter((match) => projectBase && !html.slice(match.index).startsWith(match[0].replace('/', projectBase)));
 
-if (rootAbsoluteAsset.test(html)) {
-  throw new Error('Static build contains a root-absolute asset URL that will break on a project Pages site.');
+if (invalidRootAssets.length || (!projectBase && rootAbsoluteAsset.test(html))) {
+  throw new Error('Static build contains a root-absolute asset URL outside the configured project Pages base.');
+}
+
+if (projectBase && !html.includes(`src="${projectBase}static/`)) {
+  throw new Error(`Static build is not using the configured Pages base path: ${projectBase}`);
 }
 
 const manifest = JSON.parse(fs.readFileSync(path.join(build, 'asset-manifest.json'), 'utf8'));
@@ -26,7 +35,7 @@ if (!entrypoints.length) {
 }
 
 for (const entrypoint of entrypoints) {
-  const relativePath = entrypoint.replace(/^\.\//, '');
+  const relativePath = entrypoint.replace(/^\.\//, '').replace(new RegExp(`^${projectBase}`), '');
   if (!fs.existsSync(path.join(build, relativePath))) {
     throw new Error(`Static build entrypoint does not exist: build/${relativePath}`);
   }
